@@ -1,0 +1,12 @@
+Testing ground for a platform game engine.
+
+Requirements/dependencies:
+ruby (tested only on 1.9.1)
+gosu
+chingu
+pretty-fsm 0.2, must build from its github repo
+
+Controls:
+move left: left
+move right: right
+jump: space
