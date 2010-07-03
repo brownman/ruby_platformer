@@ -22,6 +22,7 @@ class Platform < GameObject
         super
         @box = Rect.new([@x, @y, options[:width], options[:height]])
         @color = options[:color] or Color.new(255,255,0,0)
+        @color2 = Color.new(255,0,128,255)
     end
     
     def bounding_box
@@ -30,6 +31,10 @@ class Platform < GameObject
     
     def draw
         $window.fill_rect(@box, @color)
+        $window.fill_rect(@box.left_side, @color2)
+        $window.fill_rect(@box.right_side, @color2)
+        $window.fill_rect(@box.top_side, @color2)
+        $window.fill_rect(@box.bottom_side, @color2)
     end
 end
 
@@ -79,16 +84,15 @@ class Player < GameObject
    def initial_state
       puts "initial_state"
       if self.first_collision(Platform)
-         return "idle".to_sym
+         @previous_state = :idle
       else
-         return "falling".to_sym
+         @previous_state = :falling
       end
    end
     
    # idle state functions
    def start_idle
       puts "start_idle"
-      
    end
     
    def while_idle
@@ -96,9 +100,12 @@ class Player < GameObject
       self.resolve_collisions
    end
 
+   def end_idle
+   end
+
    def stopped?
       puts "stopped?"
-      return self.velocity_x == 0
+      return true if self.velocity_x == 0 and ((not @pressed_left) and (not @pressed_right))
    end
     
    # walking/running state functions
@@ -109,6 +116,7 @@ class Player < GameObject
    def while_moving
       puts "moving"
       # if user is pressing a direction button
+      self.resolve_collisions
       if @pressed_right && self.velocity_x < 0
          self.acceleration_x = 0
          self.velocity_x += @skid
@@ -169,7 +177,7 @@ class Player < GameObject
    
    def can_jump?
       puts "can_jump?"
-      return true if @pressed_jump and ((@fsm.state != :jumping) and (@fsm.state != :falling))
+      return true if @pressed_jump and ((@fsm.state != :falling) and (@fsm.state != :jumping))
       return false
    end
     
@@ -184,7 +192,6 @@ class Player < GameObject
    end
 
    def end_falling
-      
    end
 
    def can_fall?
@@ -255,12 +262,37 @@ class Player < GameObject
    # Collision response
    def resolve_collisions
       self.each_collision(Platform) do | me, platform |
-         me.resolve_platform(platform)
+         me.resolve_platforms(platform)
       end
    end
 
-   def resolve_platform(platform)
-      @y = platform.box.y - @box.height
+   def resolve_platforms(platform)
+      if @box.bottom_side.collide_rect?(platform.box.top_side) #and self.velocity_y > 0
+         @y = platform.box.y - @box.height
+      elsif @box.top_side.collide_rect?(platform.box.bottom_side) #and self.velocity_y < 0 #and self.velocity_y > 0 and @x + @box.width < platform.x + 5
+         @y = platform.box.y + platform.box.height + 1
+         self.velocity_y = 0
+      elsif @box.left_side.collide_rect?(platform.box.right_side) and self.velocity_x < 0
+         @x = platform.box.x + platform.box.width
+         self.velocity_x = 0
+         self.acceleration_x = 0
+      elsif @box.right_side.collide_rect?(platform.box.left_side) and self.velocity_x > 0
+         @x = platform.box.x - @box.width
+         self.velocity_x = 0
+         self.acceleration_x = 0
+      end
+      
+      #self->right/platform->left collision
+      
+      
+      #self->left/platform->right collision
+      
+      
+      #self->bottom/platform->top collision
+
+      
+      #self->top/platform->bottom collision
+
    end
 end
 
@@ -270,6 +302,8 @@ class Engine_test < GameState
         super
         $window.caption = "Platform Engine Test initial testing version"
         @platform = Platform.create( :x => 0, :y => 718, :width => 1024, :height => 50, :color => Color.new(255,255,255,0))
+        @platform2 = Platform.create( :x => 512, :y => 668, :width => 50, :height => 50, :color => Color.new(255,255,255,0))
+        @platform3 = Platform.create( :x => 450, :y => 600, :width => 300, :height => 50, :color => Color.new(255,0,255,0)) 
         @player = Player.create( :x => 100, :y => 200, :color => Color.new(255,0,255,0))
         @player.input = { :holding_left   => Proc.new { @player.pressed_left = true; @player.pressed_right = false },
                           :holding_right  => Proc.new { @player.pressed_right = true; @player.pressed_left = false },
